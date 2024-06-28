@@ -3,13 +3,20 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": " nodemon server.ts "
+    "dev": " nodemon server.ts ",
+    "build": "tsc",
+    "format": "prettier --loglevel warn --write \"{src/middlewares,src,services/user,services/product,services/order,services/collection}/**/*.{ts}\"",
+
+
   },
   "keywords": [
     "rest",
     "api",
-    "express"
+    "express",
+    "ecommerce backend",
+    "backend"
   ],
   "author": "Ukay Khing <ukaykhing25@gmail.com>",
   "license": "ISC",
