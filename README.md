@@ -148,17 +148,6 @@ To compile TypeScript files into JavaScript:
 npm run build
 ```
 
-### Linting and Formatting
-To check for linting errors:
-```sh
-npm run lint
-```
-
-To automatically fix linting errors:
-```sh
-npm run lint:fix
-```
-
 To format code with Prettier:
 ```sh
 npm run format
