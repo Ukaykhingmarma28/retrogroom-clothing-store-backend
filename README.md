@@ -1,7 +1,3 @@
-Sure, here is the developer documentation for your project:
-
----
-
 # Developer Documentation
 
 ## Project Overview
