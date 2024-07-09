@@ -11,44 +11,49 @@ const cartItemSchema = new Schema({
   color: String,
 });
 
-const userSchema = new Schema<UserDocument>({
-  userName: {
-    type: String,
-    unique: true,
-    required: true,
+const userSchema = new Schema<UserDocument>(
+  {
+    userName: {
+      type: String,
+      unique: true,
+      required: true,
+    },
+    firstName: String,
+    lastName: String,
+    email: {
+      type: String,
+      unique: true,
+      required: true,
+    },
+    mobile: String,
+    password: {
+      type: String,
+      required: true,
+    },
+    roles: {
+      type: String,
+      enum: ["ADMIN", "CUSTOMER"],
+      default: "CUSTOMER",
+    },
+    cart: [cartItemSchema],
+    cartTotal: Number,
+    shipmentAddress: String,
+    state: String,
+    city: String,
+    zipcode: String,
+    wishlist: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
+    refreshToken: String,
+    passwordChangedAt: Date,
+    passwordResetToken: String,
+    passwordResetExpires: Date,
   },
-  firstName: String,
-  lastName: String,
-  email: {
-    type: String,
-    unique: true,
-    required: true,
-  },
-  mobile: String,
-  password: {
-    type: String,
-    required: true,
-  },
-  roles: {
-    type: String,
-    enum: ["ADMIN", "CUSTOMER"],
-    default: "CUSTOMER",
-  },
-  cart: [cartItemSchema],
-  cartTotal: Number,
-  shipmentAddress: String,
-  state: String,
-  city: String,
-  zipcode: String,
-  wishlist: [{
-    type: Schema.Types.ObjectId,
-    ref: "Product",
-  }],
-  refreshToken: String,
-  passwordChangedAt: Date,
-  passwordResetToken: String,
-  passwordResetExpires: Date,
-}, { timestamps: true });
+  { timestamps: true },
+);
 
 const User = model<UserDocument>("User", userSchema);
 export default User;

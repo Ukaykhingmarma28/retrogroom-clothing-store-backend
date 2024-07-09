@@ -2,83 +2,85 @@ import { model, Schema } from "mongoose";
 import { ProductDocument } from "./productTypes";
 
 const productStockSchema = new Schema({
-    color: {
-        type: String,
-        required: true,
-    },
-    size: {
-        type: String,
-        required: true,
-    },
-    quantity: {
-        type: Number,
-        required: true,
-        default: 0,
-    },
+  color: {
+    type: String,
+    required: true,
+  },
+  size: {
+    type: String,
+    required: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
 });
 
-const productSchema = new Schema<ProductDocument>({
+const productSchema = new Schema<ProductDocument>(
+  {
     productName: {
-        type: String,
-        required: true,
+      type: String,
+      required: true,
     },
     productPrice: {
-        type: Number,
-        required: true,
+      type: Number,
+      required: true,
     },
     productDescription: {
-        type: String,
+      type: String,
     },
     productImage: {
-        type: String,
+      type: String,
     },
     productImageUrl: {
-        type: [String],
+      type: [String],
     },
     productCategory: {
-        type: String,
-        lowercase: true,
+      type: String,
+      lowercase: true,
     },
     productSlug: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true,
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
     },
     totalSoldProduct: {
-        type: Number,
-        default: 0,
+      type: Number,
+      default: 0,
     },
     productColors: [String],
     productSizes: [String],
     productStock: [productStockSchema], // Updated to use the productStockSchema
     productCollection: {
-        type: String,
-        lowercase: true,
+      type: String,
+      lowercase: true,
     },
     productRatings: [
-        {
-            rating: {
-                type: Number,
-            },
-            comment: {
-                type: String,
-            },
-            orderProductId: {
-                type: Schema.Types.ObjectId,
-                ref: "Order",
-            },
-            postBy:{
-                type: Schema.Types.ObjectId,
-                ref: "User",
-            }
+      {
+        rating: {
+          type: Number,
         },
+        comment: {
+          type: String,
+        },
+        orderProductId: {
+          type: Schema.Types.ObjectId,
+          ref: "Order",
+        },
+        postBy: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+        },
+      },
     ],
     productTotalRating: {
-        type: Number,
-        default: 0,
+      type: Number,
+      default: 0,
     },
-},{timestamps: true}
+  },
+  { timestamps: true },
 );
 
 const Product = model<ProductDocument>("Product", productSchema);

@@ -7,13 +7,15 @@ const collectionSchema = new Schema<CollectionDocument>({
     required: true,
     lowercase: true,
   },
-  collectionProduct: [{
+  collectionProduct: [
+    {
       type: Schema.Types.ObjectId,
       ref: "Product",
-    }],
+    },
+  ],
   collectionImage: String,
-  collectionCategory: String
-})
+  collectionCategory: String,
+});
 
 const Collection = model<CollectionDocument>("Collection", collectionSchema);
 export default Collection;

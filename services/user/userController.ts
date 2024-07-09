@@ -588,9 +588,9 @@
 //                                  //
 //////////////////////////////////////
 
-import { Request, Response, NextFunction } from 'express';
-import createHttpError from 'http-errors';
-import bcrypt from 'bcrypt';
+import { Request, Response, NextFunction } from "express";
+import createHttpError from "http-errors";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../../services/user/userModel";
@@ -599,524 +599,677 @@ import Order from "../order/orderModel";
 import { config } from "../../src/config";
 
 interface AuthRequest extends Request {
-    user?: any;
+  user?: any;
 }
 
 const findUserById = async (userId: string, next: NextFunction) => {
-    try {
-        const user = await User.findById(userId);
-        if (!user) {
-            return next(createHttpError(404, 'User not found'));
-        }
-        return user;
-    } catch (error) {
-        return next(createHttpError(500, 'Server Error'));
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return next(createHttpError(404, "User not found"));
     }
+    return user;
+  } catch (error) {
+    return next(createHttpError(500, "Server Error"));
+  }
 };
 
 const generateTokens = (userId: string) => {
-    const token = jwt.sign({ sub: userId }, config.jwtSecret as string, { expiresIn: "1h" });
-    const refreshToken = jwt.sign({ _id: userId }, config.jwtSecret as string, { expiresIn: "3d" });
-    return { token, refreshToken };
+  const token = jwt.sign({ sub: userId }, config.jwtSecret as string, {
+    expiresIn: "1h",
+  });
+  const refreshToken = jwt.sign({ _id: userId }, config.jwtSecret as string, {
+    expiresIn: "3d",
+  });
+  return { token, refreshToken };
 };
 
 const updateCartTotal = async (user: any) => {
-    try {
-        let cartTotal = 0;
-        for (const item of user.cart) {
-            const product = await Product.findById(item.product);
-            if (!product) {
-                continue;
-            }
-            cartTotal += product.productPrice * item.quantity;
-        }
-        user.cartTotal = cartTotal;
-        await user.save();
-        return cartTotal;
-    } catch (error) {
-        throw new Error('Failed to update cart total');
+  try {
+    let cartTotal = 0;
+    for (const item of user.cart) {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        continue;
+      }
+      cartTotal += product.productPrice * item.quantity;
     }
+    user.cartTotal = cartTotal;
+    await user.save();
+    return cartTotal;
+  } catch (error) {
+    throw new Error("Failed to update cart total");
+  }
 };
 
 const checkRequiredFields: any = (fields: any[], next: NextFunction) => {
-    for (const field of fields) {
-        if (!field) {
-            return next(createHttpError(400, "All fields are required"));
-        }
+  for (const field of fields) {
+    if (!field) {
+      return next(createHttpError(400, "All fields are required"));
     }
+  }
 };
 
 // Register New User
-export const register = async (req: Request, res: Response, next: NextFunction) => {
-    const { userName, email, password } = req.body;
-    if (checkRequiredFields([userName, email, password], next)) return;
+export const register = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { userName, email, password } = req.body;
+  if (checkRequiredFields([userName, email, password], next)) return;
 
-    try {
-        const existingUser = await User.findOne({ $or: [{ userName }, { email }] });
-        if (existingUser) {
-            const field = existingUser.userName === userName ? 'User Name' : 'Email';
-            return next(createHttpError(400, `${field} already exists`));
-        }
-
-        const hashPassword = await bcrypt.hash(password, 12);
-        const user = new User({ userName, email, password: hashPassword });
-
-        await user.save();
-        const { token, refreshToken } = generateTokens(user._id);
-
-        res.cookie('Bearer', refreshToken, { httpOnly: true, maxAge: 259200000 });
-        res.status(201).json({ token, message: 'Registered successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+  try {
+    const existingUser = await User.findOne({ $or: [{ userName }, { email }] });
+    if (existingUser) {
+      const field = existingUser.userName === userName ? "User Name" : "Email";
+      return next(createHttpError(400, `${field} already exists`));
     }
+
+    const hashPassword = await bcrypt.hash(password, 12);
+    const user = new User({ userName, email, password: hashPassword });
+
+    await user.save();
+    const { token, refreshToken } = generateTokens(user._id);
+
+    res.cookie("Bearer", refreshToken, { httpOnly: true, maxAge: 259200000 });
+    res.status(201).json({ token, message: "Registered successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Login
-export const login = async (req: Request, res: Response, next: NextFunction) => {
-    const { email, password } = req.body;
-    if (checkRequiredFields([email, password], next)) return;
+export const login = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { email, password } = req.body;
+  if (checkRequiredFields([email, password], next)) return;
 
-    try {
-        const user = await User.findOne({ email });
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            return next(createHttpError(400, 'Invalid credentials'));
-        }
-
-        const { token, refreshToken } = generateTokens(user._id);
-        user.refreshToken = refreshToken;
-        await user.save();
-
-        res.cookie('Bearer', refreshToken, { httpOnly: true, maxAge: 259200000 });
-        res.status(200).json({ token, message: 'Logged in successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+  try {
+    const user = await User.findOne({ email });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return next(createHttpError(400, "Invalid credentials"));
     }
+
+    const { token, refreshToken } = generateTokens(user._id);
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    res.cookie("Bearer", refreshToken, { httpOnly: true, maxAge: 259200000 });
+    res.status(200).json({ token, message: "Logged in successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Admin Login
-export const admin = async (req: Request, res: Response, next: NextFunction) => {
-    const { email, password } = req.body;
-    console.log(req.headers);
-    if (checkRequiredFields([email, password], next)) return;
+export const admin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { email, password } = req.body;
+  console.log(req.headers);
+  if (checkRequiredFields([email, password], next)) return;
 
-    try {
-        const user = await User.findOne({ email });
-        if (!user || user.roles !== "ADMIN" || !(await bcrypt.compare(password, user.password))) {
-            return next(createHttpError(401, 'Unauthorized or Invalid credentials'));
-        }
-
-        const { token, refreshToken } = generateTokens(user._id);
-        user.refreshToken = refreshToken;
-        await user.save();
-
-        res.cookie('Bearer', refreshToken, { httpOnly: true, maxAge: 259200000 });
-        res.status(200).json({ token, message: 'Admin logged in successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+  try {
+    const user = await User.findOne({ email });
+    if (
+      !user ||
+      user.roles !== "ADMIN" ||
+      !(await bcrypt.compare(password, user.password))
+    ) {
+      return next(createHttpError(401, "Unauthorized or Invalid credentials"));
     }
+
+    const { token, refreshToken } = generateTokens(user._id);
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    res.cookie("Bearer", refreshToken, { httpOnly: true, maxAge: 259200000 });
+    res.status(200).json({ token, message: "Admin logged in successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Handle Refresh Token
-export const handleRefreshToken = async (req: Request, res: Response, next: NextFunction) => {
-    const cookie = req.headers.cookie;
-    if (!cookie) {
-        return next(createHttpError(401, 'No refresh token provided'));
-    }
-    const refreshToken = cookie.split("=")[1];
+export const handleRefreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const cookie = req.headers.cookie;
+  if (!cookie) {
+    return next(createHttpError(401, "No refresh token provided"));
+  }
+  const refreshToken = cookie.split("=")[1];
 
-    try {
-        const decoded: any = jwt.verify(refreshToken, config.jwtSecret as string);
-        const user = await User.findById(decoded._id);
-        if (!user) {
-            return next(createHttpError(404, 'User not found'));
-        }
-        const accessToken = jwt.sign({ _id: user._id }, config.jwtSecret as string, { expiresIn: "1d" });
-
-        res.status(200).json({ accessToken, message: 'Your access token' });
-    } catch (error: any) {
-        next(createHttpError(500, `Server Error: ${error.message}`));
+  try {
+    const decoded: any = jwt.verify(refreshToken, config.jwtSecret as string);
+    const user = await User.findById(decoded._id);
+    if (!user) {
+      return next(createHttpError(404, "User not found"));
     }
+    const accessToken = jwt.sign(
+      { _id: user._id },
+      config.jwtSecret as string,
+      { expiresIn: "1d" },
+    );
+
+    res.status(200).json({ accessToken, message: "Your access token" });
+  } catch (error: any) {
+    next(createHttpError(500, `Server Error: ${error.message}`));
+  }
 };
 
 // Logout
-export const logout = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const cookie = req.headers.cookie;
-        if (!cookie) {
-            return next(createHttpError(401, 'No refresh token provided'));
-        }
-        const refreshToken = cookie.split("=")[1];
-
-        const user = await User.findOne({ refreshToken });
-        if (!user) {
-            return next(createHttpError(404, 'User not found'));
-        }
-
-        user.refreshToken = undefined;
-        await user.save();
-
-        res.clearCookie('Bearer');
-        res.status(200).json({ message: 'Logged out successfully' });
-    } catch (error: any) {
-        next(createHttpError(500, error.message));
+export const logout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const cookie = req.headers.cookie;
+    if (!cookie) {
+      return next(createHttpError(401, "No refresh token provided"));
     }
+    const refreshToken = cookie.split("=")[1];
+
+    const user = await User.findOne({ refreshToken });
+    if (!user) {
+      return next(createHttpError(404, "User not found"));
+    }
+
+    user.refreshToken = undefined;
+    await user.save();
+
+    res.clearCookie("Bearer");
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error: any) {
+    next(createHttpError(500, error.message));
+  }
 };
 
 // Update User
-export const updatedUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user._id;
-    const { firstName, lastName, email, mobile } = req.body;
+export const updatedUser = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const userId = req.user._id;
+  const { firstName, lastName, email, mobile } = req.body;
 
-    try {
-        const user = await findUserById(userId, next);
-        if (!user) return;
+  try {
+    const user = await findUserById(userId, next);
+    if (!user) return;
 
-        user.firstName = firstName || user.firstName;
-        user.lastName = lastName || user.lastName;
-        user.email = email || user.email;
-        user.mobile = mobile || user.mobile;
+    user.firstName = firstName || user.firstName;
+    user.lastName = lastName || user.lastName;
+    user.email = email || user.email;
+    user.mobile = mobile || user.mobile;
 
-        await user.save();
-        res.status(200).json({ user, message: 'User updated successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
-    }
+    await user.save();
+    res.status(200).json({ user, message: "User updated successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Update User Address
-export const updateAddress = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user._id;
-    const { shipmentAddress, state, city, zipcode } = req.body;
+export const updateAddress = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const userId = req.user._id;
+  const { shipmentAddress, state, city, zipcode } = req.body;
 
-    try {
-        const user = await findUserById(userId, next);
-        if (!user) return;
+  try {
+    const user = await findUserById(userId, next);
+    if (!user) return;
 
-        user.shipmentAddress = shipmentAddress;
-        user.state = state;
-        user.city = city;
-        user.zipcode = zipcode;
+    user.shipmentAddress = shipmentAddress;
+    user.state = state;
+    user.city = city;
+    user.zipcode = zipcode;
 
-        await user.save();
-        res.status(200).json({ user, message: 'Address updated successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
-    }
+    await user.save();
+    res.status(200).json({ user, message: "Address updated successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Get All Users
-export const getAllUser = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const users = await User.find();
-        res.status(200).json(users);
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
-    }
+export const getAllUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const users = await User.find();
+    res.status(200).json(users);
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Password Update
-export const updatePassword = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user._id;
-    const { currentPassword, newPassword } = req.body;
+export const updatePassword = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const userId = req.user._id;
+  const { currentPassword, newPassword } = req.body;
 
-    try {
-        const user = await findUserById(userId, next);
-        if (!user) return;
+  try {
+    const user = await findUserById(userId, next);
+    if (!user) return;
 
-        if (!(await bcrypt.compare(currentPassword, user.password))) {
-            return next(createHttpError(401, 'Current password is incorrect'));
-        }
-
-        user.password = await bcrypt.hash(newPassword, 12);
-        await user.save();
-
-        res.status(200).json({ message: 'Password updated successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+    if (!(await bcrypt.compare(currentPassword, user.password))) {
+      return next(createHttpError(401, "Current password is incorrect"));
     }
+
+    user.password = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Forget Password Token
-export const forgotPasswordToken = async (req: Request, res: Response, next: NextFunction) => {
-    const { email } = req.body;
+export const forgotPasswordToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { email } = req.body;
 
-    try {
-        const user = await User.findOne({ email });
-        if (!user) {
-            return next(createHttpError(404, 'User not found'));
-        }
-
-        const resetToken = crypto.randomBytes(32).toString("hex");
-        user.passwordResetToken = resetToken;
-        user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000);
-        await user.save();
-
-        const resetURL = `http://localhost:4000/api/user/reset-password/${resetToken}`;
-        // Send resetURL to user via email or other means
-
-        res.status(200).json({ resetURL, message: 'Reset password token sent successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return next(createHttpError(404, "User not found"));
     }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = new Date(Date.now() + 30 * 60 * 1000);
+    await user.save();
+
+    const resetURL = `http://localhost:4000/api/user/reset-password/${resetToken}`;
+    // Send resetURL to user via email or other means
+
+    res
+      .status(200)
+      .json({ resetURL, message: "Reset password token sent successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Reset Password
-export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
-    const { password } = req.body;
-    const { token } = req.params;
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { password } = req.body;
+  const { token } = req.params;
 
-    try {
-        const user = await User.findOne({
-            passwordResetToken: token,
-            passwordResetExpires: { $gt: Date.now() },
-        });
+  try {
+    const user = await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: Date.now() },
+    });
 
-        if (!user) {
-            return next(createHttpError(400, 'Password reset token is invalid or has expired'));
-        }
-
-        user.password = await bcrypt.hash(password, 12);
-        user.passwordResetToken = undefined;
-        user.passwordResetExpires = undefined;
-        await user.save();
-
-        res.status(200).json({ message: 'Password reset successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+    if (!user) {
+      return next(
+        createHttpError(400, "Password reset token is invalid or has expired"),
+      );
     }
+
+    user.password = await bcrypt.hash(password, 12);
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Add Wishlist
-export const addWishlist = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { productId } = req.body;
-    const userId = req.user?._id;
+export const addWishlist = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { productId } = req.body;
+  const userId = req.user?._id;
 
-    try {
-        if (!userId) {
-            return next(createHttpError(404, 'User not found'));
-        }
-
-        const user = await findUserById(userId, next);
-        if (!user) return;
-
-        if (user.wishlist.includes(productId)) {
-            return next(createHttpError(400, 'Product already exists in wishlist'));
-        }
-
-        user.wishlist.push(productId);
-        await user.save();
-
-        res.status(200).json({ message: 'Product added to wishlist successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+  try {
+    if (!userId) {
+      return next(createHttpError(404, "User not found"));
     }
+
+    const user = await findUserById(userId, next);
+    if (!user) return;
+
+    if (user.wishlist.includes(productId)) {
+      return next(createHttpError(400, "Product already exists in wishlist"));
+    }
+
+    user.wishlist.push(productId);
+    await user.save();
+
+    res.status(200).json({ message: "Product added to wishlist successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Get Wishlist
-export const getWishlist = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user?._id;
+export const getWishlist = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const userId = req.user?._id;
 
-    try {
-        const findUser = await User.findById(userId).populate("wishlist");
-        if (!findUser) {
-            return next(createHttpError(404, 'User not found'));
-        }
-        res.json(findUser);
-    } catch (error: any) {
-        next(createHttpError(500, error.message));
+  try {
+    const findUser = await User.findById(userId).populate("wishlist");
+    if (!findUser) {
+      return next(createHttpError(404, "User not found"));
     }
+    res.json(findUser);
+  } catch (error: any) {
+    next(createHttpError(500, error.message));
+  }
 };
 
 // Remove Wishlist Item
-export const removeWishlistItem = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { productId } = req.body;
-    const userId = req.user?._id;
+export const removeWishlistItem = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { productId } = req.body;
+  const userId = req.user?._id;
 
-    try {
-        if (!userId) {
-            return next(createHttpError(404, 'User Id not found'));
-        }
-
-        const user = await findUserById(userId, next);
-        if (!user) return;
-
-        const productIndex = user.wishlist.indexOf(productId);
-        if (productIndex === -1) {
-            return next(createHttpError(404, 'Product not found in wishlist'));
-        }
-
-        user.wishlist.splice(productIndex, 1);
-        await user.save();
-
-        res.status(200).json({ message: 'Product removed from wishlist successfully', wishlist: user.wishlist });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+  try {
+    if (!userId) {
+      return next(createHttpError(404, "User Id not found"));
     }
+
+    const user = await findUserById(userId, next);
+    if (!user) return;
+
+    const productIndex = user.wishlist.indexOf(productId);
+    if (productIndex === -1) {
+      return next(createHttpError(404, "Product not found in wishlist"));
+    }
+
+    user.wishlist.splice(productIndex, 1);
+    await user.save();
+
+    res
+      .status(200)
+      .json({
+        message: "Product removed from wishlist successfully",
+        wishlist: user.wishlist,
+      });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Add Cart
-export const addCart = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { productId, quantity, color, size } = req.body;
-    const userId = req.user?._id;
+export const addCart = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { productId, quantity, color, size } = req.body;
+  const userId = req.user?._id;
 
-    if (checkRequiredFields([productId, quantity, color, size], next)) return;
+  if (checkRequiredFields([productId, quantity, color, size], next)) return;
 
-    try {
-        const product = await Product.findById(productId);
-        if (!product) {
-            return next(createHttpError(404, `Product with ID ${productId} not found`));
-        }
-
-        const productStock = product.productStock.find(stock => stock.color === color && stock.size === size);
-        if (!productStock || productStock.quantity < quantity) {
-            return next(createHttpError(400, `Insufficient stock for product ${product.productName}, color: ${color}, size: ${size}`));
-        }
-
-        const user = await findUserById(userId, next);
-        if (!user) return;
-
-        const cartItemIndex = user.cart.findIndex(item =>
-            item.product.toString() === productId && item.color === color && item.size === size
-        );
-
-        if (cartItemIndex > -1) {
-            user.cart[cartItemIndex].quantity += quantity;
-        } else {
-            user.cart.push({ product: productId, quantity, color, size });
-        }
-
-        const cartTotal = await updateCartTotal(user);
-
-        res.status(201).json({ message: 'Product added to cart successfully', cart: user.cart, cartTotal });
-    } catch (error: any) {
-        return next(createHttpError(500, error.message));
+  try {
+    const product = await Product.findById(productId);
+    if (!product) {
+      return next(
+        createHttpError(404, `Product with ID ${productId} not found`),
+      );
     }
+
+    const productStock = product.productStock.find(
+      (stock) => stock.color === color && stock.size === size,
+    );
+    if (!productStock || productStock.quantity < quantity) {
+      return next(
+        createHttpError(
+          400,
+          `Insufficient stock for product ${product.productName}, color: ${color}, size: ${size}`,
+        ),
+      );
+    }
+
+    const user = await findUserById(userId, next);
+    if (!user) return;
+
+    const cartItemIndex = user.cart.findIndex(
+      (item) =>
+        item.product.toString() === productId &&
+        item.color === color &&
+        item.size === size,
+    );
+
+    if (cartItemIndex > -1) {
+      user.cart[cartItemIndex].quantity += quantity;
+    } else {
+      user.cart.push({ product: productId, quantity, color, size });
+    }
+
+    const cartTotal = await updateCartTotal(user);
+
+    res
+      .status(201)
+      .json({
+        message: "Product added to cart successfully",
+        cart: user.cart,
+        cartTotal,
+      });
+  } catch (error: any) {
+    return next(createHttpError(500, error.message));
+  }
 };
 
 // Remove Cart Item
-export const removeCartItem = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { productId, color, size } = req.body;
-    const userId = req.user?._id;
+export const removeCartItem = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { productId, color, size } = req.body;
+  const userId = req.user?._id;
 
-    try {
-        const user = await findUserById(userId, next);
-        if (!user) return;
+  try {
+    const user = await findUserById(userId, next);
+    if (!user) return;
 
-        const cartItemIndex = user.cart.findIndex(item =>
-            item.product.toString() === productId && item.color === color && item.size === size
-        );
-        if (cartItemIndex === -1) {
-            return next(createHttpError(404, 'Product not found in cart'));
-        }
-
-        user.cart.splice(cartItemIndex, 1);
-        const cartTotal = await updateCartTotal(user);
-
-        res.status(200).json({ message: 'Product removed from cart successfully', cart: user.cart, cartTotal });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+    const cartItemIndex = user.cart.findIndex(
+      (item) =>
+        item.product.toString() === productId &&
+        item.color === color &&
+        item.size === size,
+    );
+    if (cartItemIndex === -1) {
+      return next(createHttpError(404, "Product not found in cart"));
     }
+
+    user.cart.splice(cartItemIndex, 1);
+    const cartTotal = await updateCartTotal(user);
+
+    res
+      .status(200)
+      .json({
+        message: "Product removed from cart successfully",
+        cart: user.cart,
+        cartTotal,
+      });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Decrease Cart Item Quantity
-export const decreaseCartItemQuantity = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { productId, color, size } = req.body;
-    const userId = req.user?._id;
+export const decreaseCartItemQuantity = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { productId, color, size } = req.body;
+  const userId = req.user?._id;
 
-    try {
-        const user = await findUserById(userId, next);
-        if (!user) return;
+  try {
+    const user = await findUserById(userId, next);
+    if (!user) return;
 
-        const cartItemIndex = user.cart.findIndex(item =>
-            item.product.toString() === productId && item.color === color && item.size === size
-        );
-        if (cartItemIndex === -1) {
-            return next(createHttpError(404, 'Product not found in cart'));
-        }
-
-        if (user.cart[cartItemIndex].quantity > 1) {
-            user.cart[cartItemIndex].quantity -= 1;
-        } else {
-            user.cart.splice(cartItemIndex, 1);
-        }
-
-        const cartTotal = await updateCartTotal(user);
-
-        res.status(200).json({ message: 'Cart item quantity decreased successfully', cart: user.cart, cartTotal });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+    const cartItemIndex = user.cart.findIndex(
+      (item) =>
+        item.product.toString() === productId &&
+        item.color === color &&
+        item.size === size,
+    );
+    if (cartItemIndex === -1) {
+      return next(createHttpError(404, "Product not found in cart"));
     }
+
+    if (user.cart[cartItemIndex].quantity > 1) {
+      user.cart[cartItemIndex].quantity -= 1;
+    } else {
+      user.cart.splice(cartItemIndex, 1);
+    }
+
+    const cartTotal = await updateCartTotal(user);
+
+    res
+      .status(200)
+      .json({
+        message: "Cart item quantity decreased successfully",
+        cart: user.cart,
+        cartTotal,
+      });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
 // Increase Cart Item Quantity
-export const increaseCartItemQuantity = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { productId, color, size } = req.body;
-    const userId = req.user?._id;
+export const increaseCartItemQuantity = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { productId, color, size } = req.body;
+  const userId = req.user?._id;
 
-    try {
-        const user = await findUserById(userId, next);
-        if (!user) return;
+  try {
+    const user = await findUserById(userId, next);
+    if (!user) return;
 
-        const cartItemIndex = user.cart.findIndex(item =>
-            item.product.toString() === productId && item.color === color && item.size === size
-        );
-        if (cartItemIndex === -1) {
-            return next(createHttpError(404, 'Product not found in cart'));
-        }
-
-        user.cart[cartItemIndex].quantity += 1;
-        const cartTotal = await updateCartTotal(user);
-
-        res.status(200).json({ message: 'Cart item quantity increased successfully', cart: user.cart, cartTotal });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+    const cartItemIndex = user.cart.findIndex(
+      (item) =>
+        item.product.toString() === productId &&
+        item.color === color &&
+        item.size === size,
+    );
+    if (cartItemIndex === -1) {
+      return next(createHttpError(404, "Product not found in cart"));
     }
+
+    user.cart[cartItemIndex].quantity += 1;
+    const cartTotal = await updateCartTotal(user);
+
+    res
+      .status(200)
+      .json({
+        message: "Cart item quantity increased successfully",
+        cart: user.cart,
+        cartTotal,
+      });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
 
-export const addRatingAndComment = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { productId, orderProductId, rating, comment, orderId } = req.body;
-    const userId: any = req.user._id;
-    const postBy = userId
+export const addRatingAndComment = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { productId, orderProductId, rating, comment, orderId } = req.body;
+  const userId: any = req.user._id;
+  const postBy = userId;
 
-    try {
-        // Check if the user has purchased the product
-        const hasPurchased = await Order.findOne({ _id: orderId });
+  try {
+    // Check if the user has purchased the product
+    const hasPurchased = await Order.findOne({ _id: orderId });
 
-        const isOrderExist:any = hasPurchased?.products.filter((item) => item.product.toString() === productId && item._id.toString() === orderProductId);
+    const isOrderExist: any = hasPurchased?.products.filter(
+      (item) =>
+        item.product.toString() === productId &&
+        item._id.toString() === orderProductId,
+    );
 
-        if (!hasPurchased || isOrderExist.length === 0) {
-            return next(createHttpError(403, 'You must purchase the product to rate/comment'));
-        }
-
-       if(hasPurchased.status !== 'DELIVERED'){
-           return res.status(400).json({ message: 'Order is not complete yet' });
-       }
-
-
-
-        // Fetch the product
-        const product = await Product.findById(productId);
-
-        if (!product) {
-            return next(createHttpError(404, 'Product not found'));
-        }
-
-        // Check if the user has already rated or commented on the product
-        const hasRatedOrCommented = product.productRatings.some((item: any) => item.orderProductId.toString() === orderProductId);
-
-        if (hasRatedOrCommented) {
-            return next(createHttpError(403, 'You can only rate/comment on the product once per purchase'));
-        }
-
-        // Add the rating and comment to the product
-        product.productRatings.push({ rating, comment, orderProductId, postBy });
-        product.productTotalRating += rating;
-
-        // Save the updated product
-        await product.save()
-
-        res.status(200).json({ message: 'Rating and comment added successfully' });
-    } catch (error) {
-        next(createHttpError(500, 'Server Error'));
+    if (!hasPurchased || isOrderExist.length === 0) {
+      return next(
+        createHttpError(403, "You must purchase the product to rate/comment"),
+      );
     }
+
+    if (hasPurchased.status !== "DELIVERED") {
+      return res.status(400).json({ message: "Order is not complete yet" });
+    }
+
+    // Fetch the product
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      return next(createHttpError(404, "Product not found"));
+    }
+
+    // Check if the user has already rated or commented on the product
+    const hasRatedOrCommented = product.productRatings.some(
+      (item: any) => item.orderProductId.toString() === orderProductId,
+    );
+
+    if (hasRatedOrCommented) {
+      return next(
+        createHttpError(
+          403,
+          "You can only rate/comment on the product once per purchase",
+        ),
+      );
+    }
+
+    // Add the rating and comment to the product
+    product.productRatings.push({ rating, comment, orderProductId, postBy });
+    product.productTotalRating += rating;
+
+    // Save the updated product
+    await product.save();
+
+    res.status(200).json({ message: "Rating and comment added successfully" });
+  } catch (error) {
+    next(createHttpError(500, "Server Error"));
+  }
 };
